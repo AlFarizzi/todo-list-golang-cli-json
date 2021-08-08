@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"time"
 	. "todo-list-sederhana/model"
 )
 
@@ -38,6 +37,16 @@ func (l *Lists) DeleteTodo(id int) *Lists {
 	return &NewTodoList
 }
 
+func RemakeTodo(fileName string, data *[]byte) error {
+	file, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	file.Write(*data)
+	file.Sync()
+	return nil
+}
+
 func InputTodo(id int, author string, todo string, done string, created_at string) (Lists, error) {
 	if len(author) == 0 || len(todo) == 0 || len(done) == 0 || len(created_at) == 0 {
 		return nil, errors.New("Data Kamu Tidak Valid")
@@ -47,30 +56,14 @@ func InputTodo(id int, author string, todo string, done string, created_at strin
 
 	if os.IsNotExist(exist) == true {
 		TodoList = append(TodoList, Todo{Id: id, Author: author, Todo: todo, Done: done, Created_At: created_at})
-		file, err := os.Create("todo.json")
-		if err != nil {
-			return TodoList, err
-		}
-		defer file.Close()
 		json, _ := json.Marshal(TodoList)
-		file.Write(json)
-		file.Sync()
+		RemakeTodo("todo.json", &json)
 	} else {
-		file, _ := os.OpenFile("todo.json", os.O_WRONLY, 0644)
 		reader, _ := ioutil.ReadFile("todo.json")
-		defer file.Close()
-
 		json.Unmarshal([]byte(reader), &TodoList)
 		TodoList = append(TodoList, Todo{Id: id, Author: author, Todo: todo, Done: done, Created_At: created_at})
-		json, err := json.Marshal(TodoList)
-		if err != nil {
-			fmt.Println(err.Error(), "Atas")
-		}
-		_, err = file.Write(json)
-		if err != nil {
-			fmt.Println(err.Error(), "bawah")
-		}
-		file.Sync()
+		json, _ := json.Marshal(TodoList)
+		RemakeTodo("todo.json", &json)
 	}
 	return TodoList, nil
 }
@@ -81,6 +74,7 @@ func UpdateTodo(id int, author string, todo string, done string, created_at stri
 	if os.IsNotExist(err) == true {
 		return "Gagal", errors.New("Kamu Tidak Memiliki Todo List")
 	} else {
+
 		reader, err := ioutil.ReadFile("todo.json")
 		if err != nil {
 			return "Gagal", err
@@ -98,18 +92,15 @@ func UpdateTodo(id int, author string, todo string, done string, created_at stri
 			return err.Error(), err
 		}
 
-		result, err := json.Marshal(updatedToko)
-		if err != nil {
-			return err.Error(), err
+		if len(updatedToko) > 0 {
+			json, _ := json.Marshal(updatedToko)
+			RemakeTodo("todo.json", &json)
+			return "Berhasil", nil
+		} else {
+			return "Gagal", errors.New("Data Kamu Tidak Ditemukan")
 		}
-		os.Remove("todo.json")
-		openFile, _ = os.Create("todo.json")
-		defer openFile.Close()
-		time.Sleep(time.Second * 5)
-		openFile.Write(result)
-		openFile.Sync()
+
 	}
-	return "Berhasil", nil
 }
 
 func DeleteTodo(id int) (string, error) {
@@ -130,19 +121,13 @@ func DeleteTodo(id int) (string, error) {
 	}
 
 	new := *TodoList.DeleteTodo(id)
-	os.Remove("todo.json")
-	newFile, err := os.Create("todo.json")
-	if err != nil {
-		return "Gagal", err
-	}
+	var byteJson []byte
 	if len(new) > 0 {
-		json, _ := json.Marshal(new)
-		newFile.Write(json)
+		byteJson, _ = json.Marshal(new)
 	} else {
-		newFile.Write([]byte(""))
+		byteJson, _ = json.Marshal("")
 	}
-	newFile.Sync()
-
+	RemakeTodo("todo.json", &byteJson)
 	return "Berhasil", nil
 }
 
