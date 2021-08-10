@@ -29,7 +29,6 @@ func (l *Lists) DeleteTodo(id int) *Lists {
 	var NewTodoList Lists
 	for _, i := range *l {
 		if i.Id != id {
-			fmt.Println(i.Id, id)
 			NewTodoList = append(NewTodoList, i)
 		}
 	}
